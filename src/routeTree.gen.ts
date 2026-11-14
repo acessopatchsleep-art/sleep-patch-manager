@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as GarantiaRouteImport } from './routes/garantia'
 import { Route as GarantiaGummyRouteImport } from './routes/garantia-gummy'
 import { Route as GarantiaPatchSleepRouteImport } from './routes/garantia-patch-sleep'
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GarantiaRoute = GarantiaRouteImport.update({
@@ -98,6 +104,7 @@ const ApiPublicVegaPixRoute = ApiPublicVegaPixRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/checkout': typeof CheckoutRoute
   '/garantia': typeof GarantiaRoute
   '/garantia-gummy': typeof GarantiaGummyRoute
   '/garantia-patch-sleep': typeof GarantiaPatchSleepRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/checkout': typeof CheckoutRoute
   '/garantia': typeof GarantiaRoute
   '/garantia-gummy': typeof GarantiaGummyRoute
   '/garantia-patch-sleep': typeof GarantiaPatchSleepRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/checkout': typeof CheckoutRoute
   '/garantia': typeof GarantiaRoute
   '/garantia-gummy': typeof GarantiaGummyRoute
   '/garantia-patch-sleep': typeof GarantiaPatchSleepRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/checkout'
     | '/garantia'
     | '/garantia-gummy'
     | '/garantia-patch-sleep'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/checkout'
     | '/garantia'
     | '/garantia-gummy'
     | '/garantia-patch-sleep'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/checkout'
     | '/garantia'
     | '/garantia-gummy'
     | '/garantia-patch-sleep'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  CheckoutRoute: typeof CheckoutRoute
   GarantiaRoute: typeof GarantiaRoute
   GarantiaGummyRoute: typeof GarantiaGummyRoute
   GarantiaPatchSleepRoute: typeof GarantiaPatchSleepRoute
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/garantia': {
@@ -318,6 +338,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  CheckoutRoute: CheckoutRoute,
   GarantiaRoute: GarantiaRoute,
   GarantiaGummyRoute: GarantiaGummyRoute,
   GarantiaPatchSleepRoute: GarantiaPatchSleepRoute,

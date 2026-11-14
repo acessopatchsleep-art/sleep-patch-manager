@@ -1,5 +1,5 @@
 // Patch Sleep cart drawer: replaces the original store's cart (which depended on a checkout that no longer exists).
-import { KITS, PRODUCT_NAME, findKit, addItem, setQty, summarize, formatBRL, normalizeCoupon, isValidCep, isValidCpf, isValidPhone, COUPONS, FREE_SHIPPING_MIN } from "./cart-core.js";
+import { KITS, PRODUCT_NAME, findKit, addItem, setQty, summarize, formatBRL, normalizeCoupon, isValidCep, COUPONS, FREE_SHIPPING_MIN } from "./cart-core.js";
 
 const STORAGE_KEY = "ps-cart-v1";
 const PIX_TTL_MS = 60 * 60 * 1000;
@@ -36,7 +36,7 @@ const ICON = {
   coupon: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 15l6-6"/><circle cx="9.3" cy="9.3" r=".8"/><circle cx="14.7" cy="14.7" r=".8"/></svg>',
 };
 
-let root, ui = { view: "cart", freteOpen: false, cupomOpen: false, couponError: "", cepError: "", form: {}, submitting: false, checkoutError: "", copied: false };
+let root, ui = { view: "cart", freteOpen: false, cupomOpen: false, couponError: "", cepError: "", copied: false };
 
 function build() {
   root = document.createElement("div");
@@ -57,24 +57,10 @@ function build() {
   root.addEventListener("submit", onDrawerSubmit);
   root.addEventListener("input", (e) => {
     const t = e.target;
-    if (t.name === "cep" || t.name === "zipcode") {
+    if (t.name === "cep") {
       let v = t.value.replace(/\D/g, "").slice(0, 8);
       if (v.length > 5) v = v.slice(0, 5) + "-" + v.slice(5);
       t.value = v;
-    } else if (t.name === "document") {
-      const d = t.value.replace(/\D/g, "").slice(0, 11);
-      t.value = d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
-    } else if (t.name === "phone") {
-      const d = t.value.replace(/\D/g, "").slice(0, 11);
-      t.value = d.length > 10 ? d.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3")
-        : d.length > 6 ? d.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
-        : d.length > 2 ? d.replace(/^(\d{2})(\d+)/, "($1) $2") : d;
-    } else if (t.name === "state") {
-      t.value = t.value.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase();
-    }
-    if (t.closest('[data-form="checkout"]')) {
-      ui.form[t.name] = t.value;
-      if (t.name === "zipcode") onCheckoutCep(t.value);
     }
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && root.classList.contains("is-open")) close(); });
@@ -87,7 +73,6 @@ function setHeader(title, showBack) {
 
 function render() {
   if (state.pix) return renderPix();
-  if (ui.view === "checkout" && state.items.length) return renderCheckout();
   ui.view = "cart";
   setHeader("Carrinho de compras", false);
   const s = summarize(state.items, { coupon: state.coupon, cep: state.cep });
@@ -201,133 +186,7 @@ function close() {
   document.documentElement.classList.remove("psc-lock");
 }
 
-// ---- Checkout (Pix via Vega Checkout) ----
-const FIELDS = [
-  { name: "name", label: "Nome completo", autocomplete: "name", full: true },
-  { name: "email", label: "E-mail", type: "email", autocomplete: "email", full: true },
-  { name: "document", label: "CPF", inputmode: "numeric", placeholder: "000.000.000-00" },
-  { name: "phone", label: "Celular", type: "tel", autocomplete: "tel-national", placeholder: "(11) 99999-9999" },
-  { name: "zipcode", label: "CEP", inputmode: "numeric", autocomplete: "postal-code", placeholder: "00000-000" },
-  { name: "number", label: "Número", autocomplete: "off" },
-  { name: "street", label: "Rua", autocomplete: "address-line1", full: true },
-  { name: "complement", label: "Complemento (opcional)", autocomplete: "address-line2", full: true, optional: true },
-  { name: "district", label: "Bairro", full: true },
-  { name: "city", label: "Cidade", autocomplete: "address-level2" },
-  { name: "state", label: "UF", autocomplete: "address-level1", placeholder: "SP" },
-];
-
-function renderCheckout() {
-  setHeader("Finalizar compra", true);
-  const body = root.querySelector(".psc-body");
-  const f = ui.form;
-  if (!f.zipcode && state.cep) f.zipcode = state.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2");
-  const field = (d) => `
-    <label class="psc-field ${d.full ? "is-full" : ""}">
-      <span>${d.label}</span>
-      <input name="${d.name}" type="${d.type || "text"}" ${d.inputmode ? `inputmode="${d.inputmode}"` : ""}
-        ${d.autocomplete ? `autocomplete="${d.autocomplete}"` : ""} ${d.placeholder ? `placeholder="${d.placeholder}"` : ""}
-        ${d.optional ? "" : "required"} value="${esc(f[d.name] || "")}">
-    </label>`;
-  body.innerHTML = `
-    <form class="psc-form" id="psc-checkout-form" data-form="checkout" novalidate>
-      <p class="psc-form-title">Seus dados</p>
-      <div class="psc-grid">${FIELDS.slice(0, 4).map(field).join("")}</div>
-      <p class="psc-form-title">Endereço de entrega</p>
-      <div class="psc-grid">${FIELDS.slice(4).map(field).join("")}</div>
-    </form>`;
-  renderCheckoutFooter();
-}
-
-function renderCheckoutFooter() {
-  const footer = root.querySelector(".psc-footer");
-  footer.hidden = false;
-  const s = summarize(state.items, { coupon: state.coupon, cep: state.cep });
-  const frete = s.freeShipping ? '<span class="psc-free">Grátis</span>'
-    : s.shipping != null ? `<span>${formatBRL(s.shipping)}</span>` : '<span class="psc-muted">Informe o CEP</span>';
-  footer.innerHTML = `
-    <div class="psc-totals psc-totals-tight">
-      <div class="psc-sum"><span>SUBTOTAL (${s.count} ${s.count === 1 ? "item" : "itens"})</span><span>${formatBRL(s.subtotal)}</span></div>
-      ${s.discount ? `<div class="psc-sum psc-sum-discount"><span>DESCONTO</span><span>- ${formatBRL(s.discount)}</span></div>` : ""}
-      <div class="psc-sum"><span>FRETE</span>${frete}</div>
-      <div class="psc-total"><span>TOTAL NO PIX</span><span>${formatBRL(s.total)}</span></div>
-    </div>
-    ${ui.checkoutError ? `<p class="psc-error psc-error-box" role="alert">${esc(ui.checkoutError)}</p>` : ""}
-    <button type="submit" form="psc-checkout-form" class="psc-checkout" ${ui.submitting ? "disabled" : ""}>
-      ${ui.submitting ? "Gerando Pix…" : `${ICON.pix} Pagar com Pix`}
-    </button>
-    <button type="button" class="psc-link" data-psc="back">Voltar ao carrinho</button>`;
-}
-
-let lastCepLookup = "";
-async function onCheckoutCep(value) {
-  const cep = value.replace(/\D/g, "");
-  const prev = state.cep;
-  state.cep = isValidCep(cep) ? cep : "";
-  if (state.cep !== prev) { save(); renderCheckoutFooter(); }
-  if (!isValidCep(cep) || cep === lastCepLookup) return;
-  lastCepLookup = cep;
-  try {
-    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-    const a = await res.json();
-    if (a.erro) return;
-    const form = root.querySelector('[data-form="checkout"]');
-    if (!form) return;
-    const fill = { street: a.logradouro, district: a.bairro, city: a.localidade, state: a.uf };
-    for (const [k, v] of Object.entries(fill)) {
-      if (v && !form[k].value) { form[k].value = v; ui.form[k] = v; }
-    }
-    (form.street.value ? form.number : form.street).focus();
-  } catch { /* address lookup is only a convenience */ }
-}
-
-function validateCheckout(f) {
-  const missing = FIELDS.filter((d) => !d.optional && !String(f[d.name] || "").trim()).map((d) => d.label);
-  if (missing.length) return `Preencha: ${missing.join(", ")}.`;
-  if (String(f.name).trim().split(/\s+/).length < 2) return "Informe seu nome completo.";
-  if (!/^\S+@\S+\.\S+$/.test(String(f.email).trim())) return "Digite um e-mail válido.";
-  if (!isValidCpf(f.document)) return "Digite um CPF válido.";
-  if (!isValidPhone(f.phone)) return "Digite um celular válido com DDD.";
-  if (!isValidCep(f.zipcode)) return "Digite um CEP válido com 8 números.";
-  if (String(f.state).trim().length !== 2) return "Digite a sigla do estado (ex.: SP).";
-  return "";
-}
-
-async function submitCheckout(form) {
-  if (ui.submitting) return;
-  const f = Object.fromEntries(FIELDS.map((d) => [d.name, form[d.name].value.trim()]));
-  ui.form = { ...f };
-  ui.checkoutError = validateCheckout(f);
-  if (ui.checkoutError) { renderCheckoutFooter(); return; }
-  ui.submitting = true;
-  renderCheckoutFooter();
-  try {
-    const res = await fetch("/api/public/vega-pix", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        items: state.items,
-        coupon: state.coupon,
-        customer: { name: f.name, email: f.email, document: f.document, phone: f.phone },
-        address: { zipcode: f.zipcode, street: f.street, number: f.number, complement: f.complement, district: f.district, city: f.city, state: f.state },
-        tracking: tracking(),
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.pix) throw new Error(data.error || "Não foi possível gerar o Pix agora. Tente novamente.");
-    state.pix = { ...data, email: f.email, createdAt: Date.now() };
-    state.items = [];
-    state.coupon = null;
-    ui.view = "cart";
-    ui.submitting = false;
-    ui.checkoutError = "";
-    commit();
-  } catch (err) {
-    ui.submitting = false;
-    ui.checkoutError = err.message || "Não foi possível gerar o Pix agora. Tente novamente.";
-    renderCheckoutFooter();
-  }
-}
-
+// ---- Pix waiting screen (order created on /checkout) ----
 function renderPix() {
   setHeader("Pagamento via Pix", false);
   const p = state.pix;
@@ -380,7 +239,7 @@ function onDrawerClick(e) {
     case "frete": ui.freteOpen = !ui.freteOpen; ui.cepError = ""; render(); root.querySelector('[name="cep"]')?.focus(); break;
     case "cupom": ui.cupomOpen = !ui.cupomOpen; ui.couponError = ""; render(); root.querySelector('[name="coupon"]')?.focus(); break;
     case "rm-coupon": state.coupon = null; commit(); break;
-    case "checkout": ui.view = "checkout"; ui.checkoutError = ""; render(); root.querySelector('[name="name"]')?.focus(); break;
+    case "checkout": save(); location.href = "/checkout"; break;
     case "back": ui.view = "cart"; render(); break;
     case "copy-pix": copyPix(); break;
     case "pix-done": state.pix = null; ui.view = "cart"; save(); close(); render(); break;
@@ -390,7 +249,6 @@ function onDrawerClick(e) {
 function onDrawerSubmit(e) {
   e.preventDefault();
   const form = e.target;
-  if (form.dataset.form === "checkout") { submitCheckout(form); return; }
   if (form.dataset.form === "cep") {
     const cep = form.cep.value.replace(/\D/g, "");
     if (!isValidCep(cep)) { ui.cepError = "Digite um CEP válido com 8 números."; render(); return; }
@@ -415,9 +273,6 @@ function saveTracking() {
     const found = Object.fromEntries(keys.filter((k) => q.get(k)).map((k) => [k, q.get(k).slice(0, 200)]));
     if (Object.keys(found).length) sessionStorage.setItem(TRACKING_KEY, JSON.stringify(found));
   } catch {}
-}
-function tracking() {
-  try { return JSON.parse(sessionStorage.getItem(TRACKING_KEY) || "{}"); } catch { return {}; }
 }
 
 function init() {
