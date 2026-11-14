@@ -43,6 +43,7 @@ function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
   const [method, setMethod] = useState<"pix" | "card">("pix");
+  const [installments, setInstallments] = useState(MAX_INSTALLMENTS);
   const lastCep = useRef("");
 
   useEffect(() => {
@@ -355,10 +356,27 @@ function CheckoutPage() {
                   <li>• Seu pedido é aprovado na hora, assim que o pagamento é feito.</li>
                 </ul>
               ) : (
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>• Você será levado ao ambiente seguro do Vega Checkout para digitar os dados do cartão.</li>
-                  <li>• Parcele em até {MAX_INSTALLMENTS}x sem juros.</li>
-                </ul>
+                <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+                  <label className="block text-sm font-bold" htmlFor="co-installments">
+                    Número de parcelas
+                  </label>
+                  <select
+                    id="co-installments"
+                    value={installments}
+                    onChange={(e) => setInstallments(Number(e.target.value))}
+                    className="co-input w-full"
+                  >
+                    {Array.from({ length: MAX_INSTALLMENTS }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}x de {formatBRL(summary.total / n)} sem juros
+                      </option>
+                    ))}
+                  </select>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    <li>• Na próxima tela, ambiente seguro do Vega Checkout, você digita os dados do cartão.</li>
+                    <li>• Total: <strong className="text-foreground">{installments}x de {formatBRL(summary.total / installments)}</strong> ({formatBRL(summary.total)}).</li>
+                  </ul>
+                </div>
               )}
               {payError && (
                 <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
@@ -372,7 +390,7 @@ function CheckoutPage() {
                 </Button>
               ) : (
                 <Button variant="checkout" size="xl" className="w-full" onClick={() => (window.location.href = CARD_CHECKOUT_URL)}>
-                  <Lock aria-hidden="true" /> Pagar {formatBRL(summary.total)} com cartão
+                  <Lock aria-hidden="true" /> Continuar · {installments}x de {formatBRL(summary.total / installments)}
                 </Button>
               )}
             </div>
