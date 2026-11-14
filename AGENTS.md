@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Store pages are the original HTML files in `src/site/`, served raw by route server handlers via `src/lib/static-page.ts`; their CSS/JS/images/fonts/media live in `public/` at the same paths the HTML references. Why: the site is a verbatim copy of an existing store and must render identically.
+- The splat route `$.tsx` returns the home page for unknown paths. Why: mirrors the original server's catch-all fallback.
+- The cart is our own drawer (`public/cart/`), injected into every page by `injectCart` in `src/lib/static-page.ts`; it intercepts the original store's buy/cart clicks in the capture phase and stores the cart in localStorage. Pricing/coupon/shipping rules live in `public/cart/cart-core.js` and are tested in `src/test/cart-rules.test.ts`. Why: the original store's cart and checkout backend is not available here.
+- Checkout is Pix via Vega Checkout: the cart posts to the server route `src/routes/api/public/vega-pix.ts`, which recomputes prices with `buildPixOrder` from `cart-core.js` and calls Vega with the `VEGA_API_KEY` secret plus the `x-domain` header from the `VEGA_DOMAIN` secret. Why: the browser must never set prices or see the key, and Vega rejects requests from unapproved domains.
