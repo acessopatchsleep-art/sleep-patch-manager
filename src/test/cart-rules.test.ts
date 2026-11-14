@@ -56,22 +56,22 @@ describe("cart rules", () => {
   });
 });
 
-describe("Vega Pix order", () => {
-  it("sends prices in cents and payment_value = products + freight - discount", async () => {
+describe("checkout order", () => {
+  it("prices in cents and total = products + shipping - discount", async () => {
     // @ts-expect-error plain browser module without type declarations
-    const { buildPixOrder } = await import("../../public/cart/cart-core.js");
-    const o = buildPixOrder([{ id: "kit-1", qty: 1 }], { coupon: "PRIMEIRA15", cep: "01310000" }, "https://loja.com");
-    expect(o.products[0]).toMatchObject({ code: "kit-1", price: 5900, quantity: 1, image_url: "https://loja.com/images/adesivo-patch-sleep-principal.webp" });
-    expect(o.payment).toMatchObject({ method: "pix", currency: "BRL", freight_value: 1990, discount_value: 885 });
-    expect(o.payment.payment_value).toBe(5900 + 1990 - 885);
+    const { buildOrder } = await import("../../public/cart/cart-core.js");
+    const o = buildOrder([{ id: "kit-1", qty: 1 }], { coupon: "PRIMEIRA15", cep: "01310000" }, "https://loja.com");
+    expect(o.products[0]).toMatchObject({ code: "kit-1", unit_price: 5900, quantity: 1, image_url: "https://loja.com/images/adesivo-patch-sleep-principal.webp" });
+    expect(o.totals).toMatchObject({ currency: "BRL", shipping: 1990, discount: 885 });
+    expect(o.totals.total).toBe(5900 + 1990 - 885);
   });
 
-  it("2 Pacotes kit ships free, so the Pix is exactly R$97", async () => {
+  it("2 Pacotes kit ships free, so the order is exactly R$97", async () => {
     // @ts-expect-error plain browser module without type declarations
-    const { buildPixOrder } = await import("../../public/cart/cart-core.js");
-    const o = buildPixOrder([{ id: "kit-2", qty: 1 }], { cep: "01310000" });
-    expect(o.payment.freight_value).toBe(0);
-    expect(o.payment.payment_value).toBe(9700);
+    const { buildOrder } = await import("../../public/cart/cart-core.js");
+    const o = buildOrder([{ id: "kit-2", qty: 1 }], { cep: "01310000" });
+    expect(o.totals.shipping).toBe(0);
+    expect(o.totals.total).toBe(9700);
   });
 
   it("accepts only valid CPFs and phones with DDD", async () => {

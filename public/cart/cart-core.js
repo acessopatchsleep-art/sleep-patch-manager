@@ -69,7 +69,7 @@ export function formatBRL(n) {
   return "R$ " + Number(n || 0).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-// ---- Pix checkout (Vega Checkout) ----
+// ---- Checkout order (payment gateway) ----
 export const toCents = (n) => Math.round(Number(n || 0) * 100);
 
 export function isValidCpf(value) {
@@ -88,31 +88,23 @@ export function isValidPhone(value) {
   return /^\d{10,11}$/.test(String(value || "").replace(/\D/g, ""));
 }
 
-// Builds the products/payment part of a Vega Pix order. Values are in cents and
-// payment_value always equals products + freight - discount.
-export function buildPixOrder(items, { coupon = null, cep = null } = {}, origin = "") {
+// Builds the priced order sent to the payment gateway. Values are in cents and
+// totals.total always equals products + shipping - discount.
+export function buildOrder(items, { coupon = null, cep = null } = {}, origin = "") {
   const summary = summarize(items, { coupon, cep });
   const products = summary.lines.map(({ kit, qty }) => ({
     code: kit.id,
     name: `${PRODUCT_NAME} (${kit.title} · ${kit.dose})`,
-    price: toCents(kit.price),
+    unit_price: toCents(kit.price),
     quantity: qty,
-    is_digital: false,
-    description: `${PRODUCT_NAME} — ${kit.title}, ${kit.dose}`,
     image_url: origin + kit.image,
   }));
-  const productsCents = products.reduce((s, p) => s + p.price * p.quantity, 0);
-  const freight = toCents(summary.shipping || 0);
+  const productsCents = products.reduce((s, p) => s + p.unit_price * p.quantity, 0);
+  const shipping = toCents(summary.shipping || 0);
   const discount = toCents(summary.discount);
   return {
     summary,
     products,
-    payment: {
-      method: "pix",
-      payment_value: productsCents + freight - discount,
-      freight_value: freight,
-      discount_value: discount,
-      currency: "BRL",
-    },
+    totals: { products: productsCents, shipping, discount, total: productsCents + shipping - discount, currency: "BRL" },
   };
 }

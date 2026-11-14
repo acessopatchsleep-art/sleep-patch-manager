@@ -23,7 +23,7 @@ import { Route as SejaUmRevendedorRouteImport } from './routes/seja-um-revendedo
 import { Route as SejaUmaInfluencerRouteImport } from './routes/seja-uma-influencer'
 import { Route as TermosECondicoesRouteImport } from './routes/termos-e-condicoes'
 import { Route as DownloadAnimacaoRouteImport } from './routes/download/animacao'
-import { Route as ApiPublicVegaPixRouteImport } from './routes/api/public/vega-pix'
+import { Route as ApiPublicPaymentRouteImport } from './routes/api/public/payment'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,9 +95,9 @@ const DownloadAnimacaoRoute = DownloadAnimacaoRouteImport.update({
   path: '/download/animacao',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicVegaPixRoute = ApiPublicVegaPixRouteImport.update({
-  id: '/api/public/vega-pix',
-  path: '/api/public/vega-pix',
+const ApiPublicPaymentRoute = ApiPublicPaymentRouteImport.update({
+  id: '/api/public/payment',
+  path: '/api/public/payment',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -116,7 +116,7 @@ export interface FileRoutesByFullPath {
   '/seja-uma-influencer': typeof SejaUmaInfluencerRoute
   '/termos-e-condicoes': typeof TermosECondicoesRoute
   '/download/animacao': typeof DownloadAnimacaoRoute
-  '/api/public/vega-pix': typeof ApiPublicVegaPixRoute
+  '/api/public/payment': typeof ApiPublicPaymentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -133,7 +133,7 @@ export interface FileRoutesByTo {
   '/seja-uma-influencer': typeof SejaUmaInfluencerRoute
   '/termos-e-condicoes': typeof TermosECondicoesRoute
   '/download/animacao': typeof DownloadAnimacaoRoute
-  '/api/public/vega-pix': typeof ApiPublicVegaPixRoute
+  '/api/public/payment': typeof ApiPublicPaymentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,7 +151,7 @@ export interface FileRoutesById {
   '/seja-uma-influencer': typeof SejaUmaInfluencerRoute
   '/termos-e-condicoes': typeof TermosECondicoesRoute
   '/download/animacao': typeof DownloadAnimacaoRoute
-  '/api/public/vega-pix': typeof ApiPublicVegaPixRoute
+  '/api/public/payment': typeof ApiPublicPaymentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,7 +170,7 @@ export interface FileRouteTypes {
     | '/seja-uma-influencer'
     | '/termos-e-condicoes'
     | '/download/animacao'
-    | '/api/public/vega-pix'
+    | '/api/public/payment'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -187,7 +187,7 @@ export interface FileRouteTypes {
     | '/seja-uma-influencer'
     | '/termos-e-condicoes'
     | '/download/animacao'
-    | '/api/public/vega-pix'
+    | '/api/public/payment'
   id:
     | '__root__'
     | '/'
@@ -204,7 +204,7 @@ export interface FileRouteTypes {
     | '/seja-uma-influencer'
     | '/termos-e-condicoes'
     | '/download/animacao'
-    | '/api/public/vega-pix'
+    | '/api/public/payment'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -222,7 +222,7 @@ export interface RootRouteChildren {
   SejaUmaInfluencerRoute: typeof SejaUmaInfluencerRoute
   TermosECondicoesRoute: typeof TermosECondicoesRoute
   DownloadAnimacaoRoute: typeof DownloadAnimacaoRoute
-  ApiPublicVegaPixRoute: typeof ApiPublicVegaPixRoute
+  ApiPublicPaymentRoute: typeof ApiPublicPaymentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -325,11 +325,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DownloadAnimacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/vega-pix': {
-      id: '/api/public/vega-pix'
-      path: '/api/public/vega-pix'
-      fullPath: '/api/public/vega-pix'
-      preLoaderRoute: typeof ApiPublicVegaPixRouteImport
+    '/api/public/payment': {
+      id: '/api/public/payment'
+      path: '/api/public/payment'
+      fullPath: '/api/public/payment'
+      preLoaderRoute: typeof ApiPublicPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -350,7 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   SejaUmaInfluencerRoute: SejaUmaInfluencerRoute,
   TermosECondicoesRoute: TermosECondicoesRoute,
   DownloadAnimacaoRoute: DownloadAnimacaoRoute,
-  ApiPublicVegaPixRoute: ApiPublicVegaPixRoute,
+  ApiPublicPaymentRoute: ApiPublicPaymentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

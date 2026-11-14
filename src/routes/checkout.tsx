@@ -7,15 +7,15 @@ import { CheckoutFooter, CheckoutHeader, Field, PixIcon, StepCard, type StepStat
 import { PixScreen } from "@/components/checkout/PixScreen";
 import { Button } from "@/components/ui/button";
 import { BUMP, MAX_INSTALLMENTS, formatBRL, isValidCep, loadCart, readTracking, saveCart, setQty, summarize, thumb, type CartState } from "@/lib/cart";
-import { MASKS, emptyForm, validateAddress, validateIdentity, type CheckoutForm, type FieldErrors } from "@/lib/checkout-form";
+import { CARD_MASKS, MASKS, cardBrand, emptyCard, emptyForm, validateAddress, validateCard, validateIdentity, type CardErrors, type CardForm, type CheckoutForm, type FieldErrors } from "@/lib/checkout-form";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Finalizar compra | Patch Sleep" },
-      { name: "description", content: "Finalize sua compra do Patch Sleep com pagamento via Pix, rápido e seguro." },
+      { name: "description", content: "Finalize sua compra do Patch Sleep com Pix ou cartão de crédito, rápido e seguro." },
       { property: "og:title", content: "Finalizar compra | Patch Sleep" },
-      { property: "og:description", content: "Finalize sua compra do Patch Sleep com pagamento via Pix, rápido e seguro." },
+      { property: "og:description", content: "Finalize sua compra do Patch Sleep com Pix ou cartão de crédito, rápido e seguro." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -30,8 +30,6 @@ export const Route = createFileRoute("/checkout")({
 });
 
 const FORM_KEY = "ps-checkout-form-v1";
-// Vega's hosted checkout link, used for card payments (the Vega API only creates Pix charges).
-const CARD_CHECKOUT_URL = "https://checkout.patchsleep.shop/VCCL1O8SDBLG";
 type Step = 1 | 2 | 3;
 
 function CheckoutPage() {
@@ -44,6 +42,9 @@ function CheckoutPage() {
   const [payError, setPayError] = useState("");
   const [method, setMethod] = useState<"pix" | "card">("pix");
   const [installments, setInstallments] = useState(MAX_INSTALLMENTS);
+  // Card data stays in memory only (never saved to the browser storage or sent to our server).
+  const [card, setCard] = useState<CardForm>(emptyCard);
+  const [cardErrors, setCardErrors] = useState<CardErrors>({});
   const lastCep = useRef("");
 
   useEffect(() => {
@@ -173,13 +174,24 @@ function CheckoutPage() {
       go(Object.keys(idErrs).length ? 1 : 2);
       return;
     }
+    if (method === "card") {
+      const errs = validateCard(card);
+      setCardErrors(errs);
+      const first = Object.keys(errs)[0];
+      if (first) {
+        setTimeout(() => document.getElementById(`co-card-${first}`)?.focus(), 0);
+        return;
+      }
+    }
     setSubmitting(true);
     setPayError("");
     try {
-      const res = await fetch("/api/public/vega-pix", {
+      const res = await fetch("/api/public/payment", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          method,
+          installments: method === "card" ? installments : 1,
           items: cart!.items,
           coupon: cart!.coupon,
           customer: { name: form.name.trim(), email: form.email.trim(), document: form.document, phone: form.phone },
@@ -196,11 +208,11 @@ function CheckoutPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.pix) throw new Error(data.error || "Não foi possível gerar o Pix agora. Tente novamente.");
+      if (!res.ok || !data.pix) throw new Error(data.error || "Não foi possível concluir o pagamento agora. Tente novamente.");
       setCart({ items: [], coupon: null, cep: "", pix: { ...data, email: form.email.trim(), createdAt: Date.now() } });
       window.scrollTo({ top: 0 });
     } catch (err) {
-      setPayError(err instanceof Error ? err.message : "Não foi possível gerar o Pix agora. Tente novamente.");
+      setPayError(err instanceof Error ? err.message : "Não foi possível concluir o pagamento agora. Tente novamente.");
     } finally {
       setSubmitting(false);
     }
@@ -213,6 +225,15 @@ function CheckoutPage() {
     onQty: (id: string, qty: number) => setCart((c) => (c ? { ...c, items: setQty(c.items, id, qty) } : c)),
     onCoupon: (code: string | null) => setCart((c) => (c ? { ...c, coupon: code } : c)),
   };
+
+  const updateCard = (name: keyof CardForm, raw: string) => {
+    setCard((c) => ({ ...c, [name]: CARD_MASKS[name] ? CARD_MASKS[name]!(raw) : raw }));
+    if (cardErrors[name]) setCardErrors((e) => ({ ...e, [name]: undefined }));
+  };
+  const cardField = (name: keyof CardForm, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+    <Field {...extra} name={`card-${name}`} label={label} value={card[name]} error={cardErrors[name]} onChange={(e) => updateCard(name, e.target.value)} />
+  );
+  const brand = cardBrand(card.number);
 
   const field = (name: keyof CheckoutForm, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <Field {...extra} name={name} label={label} value={form[name]} error={errors[name]} onChange={(e) => update(name, e.target.value)} />
@@ -356,26 +377,33 @@ function CheckoutPage() {
                   <li>• Seu pedido é aprovado na hora, assim que o pagamento é feito.</li>
                 </ul>
               ) : (
-                <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
-                  <label className="block text-sm font-bold" htmlFor="co-installments">
-                    Número de parcelas
-                  </label>
-                  <select
-                    id="co-installments"
-                    value={installments}
-                    onChange={(e) => setInstallments(Number(e.target.value))}
-                    className="co-input w-full"
-                  >
-                    {Array.from({ length: MAX_INSTALLMENTS }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n}x de {formatBRL(summary.total / n)} sem juros
-                      </option>
-                    ))}
-                  </select>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    <li>• Na próxima tela, ambiente seguro do Vega Checkout, você digita os dados do cartão.</li>
-                    <li>• Total: <strong className="text-foreground">{installments}x de {formatBRL(summary.total / installments)}</strong> ({formatBRL(summary.total)}).</li>
-                  </ul>
+                <div className="grid grid-cols-6 gap-4 rounded-xl border border-border bg-surface p-4">
+                  <div className="relative col-span-6">
+                    {cardField("number", "Número do cartão", { inputMode: "numeric", autoComplete: "cc-number", placeholder: "0000 0000 0000 0000" })}
+                    {brand && (
+                      <span className="pointer-events-none absolute right-3 top-[38px] rounded bg-primary-soft px-1.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary">
+                        {brand}
+                      </span>
+                    )}
+                  </div>
+                  {cardField("holder", "Nome impresso no cartão", { autoComplete: "cc-name", placeholder: "Como está no cartão", className: "col-span-6" })}
+                  {cardField("expiry", "Validade", { inputMode: "numeric", autoComplete: "cc-exp", placeholder: "MM/AA", className: "col-span-3" })}
+                  {cardField("cvv", "CVV", { inputMode: "numeric", autoComplete: "cc-csc", placeholder: brand === "amex" ? "0000" : "000", className: "col-span-3" })}
+                  <div className="col-span-6">
+                    <label className="mb-1.5 block text-sm font-semibold" htmlFor="co-installments">
+                      Parcelas
+                    </label>
+                    <select id="co-installments" value={installments} onChange={(e) => setInstallments(Number(e.target.value))} className="co-input w-full">
+                      {Array.from({ length: MAX_INSTALLMENTS }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}x de {formatBRL(summary.total / n)} sem juros
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="col-span-6 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Lock className="size-3.5 shrink-0" aria-hidden="true" /> Seus dados são criptografados e não ficam salvos no site.
+                  </p>
                 </div>
               )}
               {payError && (
@@ -389,8 +417,9 @@ function CheckoutPage() {
                   {submitting ? "Gerando Pix…" : `Pagar ${formatBRL(summary.total)} com Pix`}
                 </Button>
               ) : (
-                <Button variant="checkout" size="xl" className="w-full" onClick={() => (window.location.href = CARD_CHECKOUT_URL)}>
-                  <Lock aria-hidden="true" /> Continuar · {installments}x de {formatBRL(summary.total / installments)}
+                <Button variant="checkout" size="xl" className="w-full" onClick={pay} disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Lock aria-hidden="true" />}
+                  {submitting ? "Processando…" : `Pagar ${installments}x de ${formatBRL(summary.total / installments)}`}
                 </Button>
               )}
             </div>
