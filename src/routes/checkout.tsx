@@ -313,7 +313,7 @@ function CheckoutPage() {
 
           <StepCard number={3} title="Pagamento" hint={stateOf(3) === "open" ? "Escolha Pix (aprovação imediata) ou cartão de crédito." : "Preencha os passos anteriores para escolher o pagamento."} state={stateOf(3)}>
             <div className="space-y-4">
-              <div role="radiogroup" aria-label="Forma de pagamento" className="space-y-3">
+              <div role="radiogroup" aria-label="Forma de pagamento" className="space-y-4 pt-3">
                 <MethodOption
                   selected={method === "pix"}
                   onSelect={() => setMethod("pix")}
@@ -322,7 +322,7 @@ function CheckoutPage() {
                   subtitle="QR Code e Copia e Cola"
                   price={formatBRL(summary.total)}
                   badge={
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success-foreground">
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-success px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-success-foreground shadow-sm">
                       <Zap className="size-3" aria-hidden="true" /> Aprovação imediata
                     </span>
                   }
@@ -398,18 +398,18 @@ function MethodOption(props: {
 }) {
   const tone = props.selected ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-primary/50";
   return (
-    <button type="button" role="radio" aria-checked={props.selected} onClick={props.onSelect} className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-colors ${tone}`}>
+    <button type="button" role="radio" aria-checked={props.selected} onClick={props.onSelect} className={`relative flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left transition-colors ${tone}`}>
+      {props.badge && <span className="absolute -top-3 right-3">{props.badge}</span>}
       <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${props.selected ? "border-primary" : "border-muted-foreground/40"}`} aria-hidden="true">
         {props.selected && <span className="size-2.5 rounded-full bg-primary" />}
       </span>
-      {props.icon}
+      <span className="shrink-0">{props.icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2 font-bold">
-          {props.title} {props.badge}
-        </span>
+        <span className="block whitespace-nowrap font-bold leading-tight">{props.title}</span>
+        <span className="block font-extrabold text-primary sm:hidden">{props.price}</span>
         <span className="block text-xs text-muted-foreground">{props.subtitle}</span>
       </span>
-      <span className="font-extrabold">{props.price}</span>
+      <span className="hidden shrink-0 whitespace-nowrap font-extrabold sm:block">{props.price}</span>
     </button>
   );
 }
