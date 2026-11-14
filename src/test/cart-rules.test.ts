@@ -87,8 +87,7 @@ describe("Vega Pix order", () => {
 
 describe("order bump", () => {
   it("adds +1 pacote extra at R$ 29,90, once per order", async () => {
-    const { summarize: sum } = await import("../../public/cart/cart-core.js");
-    const s = sum([{ id: "kit-1", qty: 1 }, { id: "bump-1", qty: 3 }]);
+    const s = summarize([{ id: "kit-1", qty: 1 }, { id: "bump-1", qty: 3 }]);
     expect(s.subtotal).toBe(88.9);
   });
 });
