@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy } from "lucide-react";
+import { CheckCircle2, Copy } from "@/components/checkout/icons";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";

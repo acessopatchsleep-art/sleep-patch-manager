@@ -1,17 +1,18 @@
-import { ChevronDown, Minus, Plus, Tag, Trash2, Truck, X } from "lucide-react";
+import { ChevronDown, Minus, Plus, Tag, Trash2, Truck, X } from "@/components/checkout/icons";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { COUPONS, PRODUCT_NAME, formatBRL, normalizeCoupon, type CartSummary } from "@/lib/cart";
+import { COUPONS, PRODUCT_NAME, formatBRL, normalizeCoupon, thumb, type CartSummary } from "@/lib/cart";
 
 type Props = {
   summary: CartSummary;
+  loading?: boolean;
   coupon: string | null;
   onQty: (id: string, qty: number) => void;
   onCoupon: (code: string | null) => void;
 };
 
-function SummaryBody({ summary: s, coupon, onQty, onCoupon }: Props) {
+function SummaryBody({ summary: s, loading, coupon, onQty, onCoupon }: Props) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const apply = (e: FormEvent) => {
@@ -23,13 +24,15 @@ function SummaryBody({ summary: s, coupon, onQty, onCoupon }: Props) {
     onCoupon(c);
   };
 
+  if (loading) return <SummarySkeleton />;
+
   return (
     <div>
       <ul className="divide-y divide-border">
         {s.lines.map(({ kit, qty }) => (
           <li key={kit.id} className="flex gap-3 py-4 first:pt-0">
             <div className="relative shrink-0">
-              <img src={kit.image} alt="" width="64" height="64" className="size-16 rounded-lg border border-border bg-primary-soft object-cover" />
+              <img src={thumb(kit.image)} alt="" width="64" height="64" className="size-16 rounded-lg border border-border bg-primary-soft object-cover" />
               <span className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{qty}</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -106,6 +109,26 @@ function SummaryBody({ summary: s, coupon, onQty, onCoupon }: Props) {
   );
 }
 
+function SummarySkeleton() {
+  return (
+    <div className="animate-pulse space-y-4" aria-label="Carregando resumo" role="status">
+      <div className="flex gap-3">
+        <div className="size-16 rounded-lg bg-muted" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-4 w-3/4 rounded bg-muted" />
+          <div className="h-3 w-1/2 rounded bg-muted" />
+        </div>
+      </div>
+      <div className="h-11 rounded-lg bg-muted" />
+      <div className="space-y-2 border-t border-border pt-4">
+        <div className="h-4 rounded bg-muted" />
+        <div className="h-4 rounded bg-muted" />
+        <div className="h-7 rounded bg-muted" />
+      </div>
+    </div>
+  );
+}
+
 export function OrderSummary(props: Props) {
   return (
     <aside className="co-card hidden p-6 lg:block" aria-label="Resumo do pedido">
@@ -121,10 +144,11 @@ export function MobileSummary(props: Props) {
     <div className="co-card overflow-hidden lg:hidden">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center justify-between px-4 py-3.5 text-left">
         <span className="flex items-center gap-2 font-bold text-primary">
-          {open ? "Ocultar resumo" : "Ver resumo"} ({props.summary.count} {props.summary.count === 1 ? "item" : "itens"})
+          {open ? "Ocultar resumo" : "Ver resumo"}
+          {!props.loading && ` (${props.summary.count} ${props.summary.count === 1 ? "item" : "itens"})`}
           <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         </span>
-        <span className="text-lg font-extrabold">{formatBRL(props.summary.total)}</span>
+        {props.loading ? <span className="h-6 w-20 animate-pulse rounded bg-muted" /> : <span className="text-lg font-extrabold">{formatBRL(props.summary.total)}</span>}
       </button>
       {open && (
         <div className="border-t border-border p-4">

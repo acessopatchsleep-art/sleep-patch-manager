@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, CreditCard, Loader2, Lock, ShoppingBag, Truck, Zap } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Lock, ShoppingBag, Truck, Zap } from "@/components/checkout/icons";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { MobileSummary, OrderSummary } from "@/components/checkout/OrderSummary";
 import { CheckoutFooter, CheckoutHeader, Field, PixIcon, StepCard, type StepState } from "@/components/checkout/parts";
 import { PixScreen } from "@/components/checkout/PixScreen";
 import { Button } from "@/components/ui/button";
-import { BUMP, MAX_INSTALLMENTS, formatBRL, isValidCep, loadCart, readTracking, saveCart, setQty, summarize, type CartState } from "@/lib/cart";
+import { BUMP, MAX_INSTALLMENTS, formatBRL, isValidCep, loadCart, readTracking, saveCart, setQty, summarize, thumb, type CartState } from "@/lib/cart";
 import { MASKS, emptyForm, validateAddress, validateIdentity, type CheckoutForm, type FieldErrors } from "@/lib/checkout-form";
 
 export const Route = createFileRoute("/checkout")({
@@ -19,6 +19,11 @@ export const Route = createFileRoute("/checkout")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
+    ],
+    // Start downloading the fonts and logo with the page instead of after the styles load.
+    links: [
+      ...["Regular", "SemiBold", "Bold", "ExtraBold"].map((w) => ({ rel: "preload", href: `/fonts/Gilroy-${w}.woff2`, as: "font", type: "font/woff2", crossOrigin: "anonymous" as const })),
+      { rel: "preload", href: "/images/logo.svg", as: "image" },
     ],
   }),
   component: CheckoutPage,
@@ -64,17 +69,10 @@ function CheckoutPage() {
     }
   }, [form]);
 
-  if (!cart) {
-    return (
-      <Shell>
-        <div className="flex justify-center py-24 text-primary">
-          <Loader2 className="size-8 animate-spin" aria-label="Carregando" />
-        </div>
-      </Shell>
-    );
-  }
+  // Until the saved cart is read (right after the page appears), the form is shown with a placeholder summary.
+  const loading = cart === null;
 
-  if (cart.pix && cart.items.length === 0) {
+  if (cart && cart.pix && cart.items.length === 0) {
     return (
       <Shell>
         <PixScreen
@@ -88,7 +86,7 @@ function CheckoutPage() {
     );
   }
 
-  if (!cart.items.some((i) => i.id !== BUMP.id)) {
+  if (cart && !cart.items.some((i) => i.id !== BUMP.id)) {
     return (
       <Shell>
         <div className="co-card mx-auto max-w-md p-8 text-center">
@@ -103,9 +101,9 @@ function CheckoutPage() {
     );
   }
 
-  const summary = summarize(cart.items, { coupon: cart.coupon, cep: cart.cep });
+  const summary = summarize(cart?.items ?? [], { coupon: cart?.coupon ?? null, cep: cart?.cep ?? "" });
 
-  const hasBump = cart.items.some((i) => i.id === BUMP.id);
+  const hasBump = !!cart?.items.some((i) => i.id === BUMP.id);
   const toggleBump = () =>
     setCart((c) => (c ? { ...c, items: hasBump ? c.items.filter((i) => i.id !== BUMP.id) : [...c.items, { id: BUMP.id, qty: 1 }] } : c));
 
@@ -209,7 +207,8 @@ function CheckoutPage() {
 
   const summaryProps = {
     summary,
-    coupon: cart.coupon,
+    loading,
+    coupon: cart?.coupon ?? null,
     onQty: (id: string, qty: number) => setCart((c) => (c ? { ...c, items: setQty(c.items, id, qty) } : c)),
     onCoupon: (code: string | null) => setCart((c) => (c ? { ...c, coupon: code } : c)),
   };
@@ -340,7 +339,7 @@ function CheckoutPage() {
 
               <label className={`flex cursor-pointer gap-3 rounded-xl border-2 border-dashed p-4 transition-colors ${hasBump ? "border-success bg-success-soft" : "border-primary/40 bg-primary-soft/50"}`}>
                 <input type="checkbox" checked={hasBump} onChange={toggleBump} className="mt-1 size-5 shrink-0 accent-[var(--color-success)]" />
-                <img src={BUMP.image} alt="" className="size-16 shrink-0 rounded-lg bg-surface object-contain" />
+                <img src={thumb(BUMP.image)} alt="" width="64" height="64" className="size-16 shrink-0 rounded-lg bg-surface object-contain" />
                 <span className="flex-1 text-sm">
                   <span className="block text-xs font-extrabold uppercase tracking-wide text-primary">Oferta única · só nesta compra</span>
                   <span className="block font-bold">Sim! Quero +1 pacote extra (48 adesivos)</span>

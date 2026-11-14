@@ -61,6 +61,9 @@ const c = core as Core;
 export const { KITS, BUMP, MAX_INSTALLMENTS, COUPONS, PRODUCT_NAME, FREE_SHIPPING_MIN } = c;
 export const { findKit, addItem, setQty, normalizeCoupon, isValidCep, isValidCpf, isValidPhone, summarize, formatBRL } = c;
 
+// Small (160px) copies of the kit photos in public/images/thumbs/, for the checkout's order summary.
+export const thumb = (src: string) => src.replace("/images/", "/images/thumbs/");
+
 // Same storage keys and shape as the cart drawer (public/cart/ps-cart.js).
 const STORAGE_KEY = "ps-cart-v1";
 const TRACKING_KEY = "ps-tracking-v1";

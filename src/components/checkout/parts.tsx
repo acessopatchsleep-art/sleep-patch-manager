@@ -1,4 +1,4 @@
-import { Check, Lock, Pencil, ShieldCheck } from "lucide-react";
+import { Check, Lock, Pencil, ShieldCheck } from "@/components/checkout/icons";
 import type { ReactNode } from "react";
 
 export function PixIcon({ className = "size-5" }: { className?: string }) {

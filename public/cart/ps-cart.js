@@ -175,8 +175,20 @@ function updateBadges() {
 
 function commit() { save(); render(); updateBadges(); }
 
+// Warm up the checkout page while the shopper looks at the cart, so "Finalizar compra" opens faster.
+let checkoutPrefetched = false;
+function prefetchCheckout() {
+  if (checkoutPrefetched) return;
+  checkoutPrefetched = true;
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.href = "/checkout";
+  document.head.appendChild(link);
+}
+
 function open() {
   render();
+  prefetchCheckout();
   root.classList.add("is-open");
   document.documentElement.classList.add("psc-lock");
   setTimeout(() => root.querySelector(".psc-drawer").focus(), 50);
