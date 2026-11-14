@@ -5,7 +5,9 @@ import { buildPixOrder, isValidCpf, isValidPhone, isValidCep, normalizeCoupon } 
 
 // Creates a Pix charge on Vega Checkout for the cart. Prices are always recomputed
 // here from the kit list, never taken from the browser.
-const VEGA_URL = "https://checkout.vegacheckout.com.br/api/checkout";
+// Vega only accepts charges sent through the checkout subdomain of the store's
+// approved domain (https://checkout.<VEGA_DOMAIN>/api/checkout).
+const vegaUrl = (domain: string) => `https://checkout.${domain}/api/checkout`;
 
 const digits = (s: string) => s.replace(/\D/g, "");
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -47,7 +49,8 @@ export const Route = createFileRoute("/api/public/vega-pix")({
     handlers: {
       POST: async ({ request }) => {
         const apiKey = process.env["VEGA_API_KEY"];
-        if (!apiKey) return json({ error: "Pagamento indisponível no momento. Tente novamente mais tarde." }, 503);
+        const domain = process.env["VEGA_DOMAIN"]?.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+        if (!apiKey || !domain) return json({ error: "Pagamento indisponível no momento. Tente novamente mais tarde." }, 503);
 
         let parsed;
         try {
@@ -99,13 +102,12 @@ export const Route = createFileRoute("/api/public/vega-pix")({
           "api-key": apiKey,
           accept: "application/json",
           "content-type": "application/json",
+          "x-domain": domain,
         };
-        const domain = process.env["VEGA_DOMAIN"];
-        if (domain) headers["x-domain"] = domain;
 
         let res: Response;
         try {
-          res = await fetch(VEGA_URL, { method: "POST", headers, body: JSON.stringify(payload) });
+          res = await fetch(vegaUrl(domain), { method: "POST", headers, body: JSON.stringify(payload) });
         } catch (err) {
           console.error("Vega request failed", err);
           return json({ error: "Não foi possível gerar o Pix agora. Tente novamente." }, 502);
