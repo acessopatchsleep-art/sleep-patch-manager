@@ -41,6 +41,8 @@ export type CartState = { items: CartItem[]; coupon: string | null; cep: string;
 
 type Core = {
   KITS: Kit[];
+  BUMP: Kit;
+  MAX_INSTALLMENTS: number;
   COUPONS: Record<string, number>;
   PRODUCT_NAME: string;
   FREE_SHIPPING_MIN: number;
@@ -56,7 +58,7 @@ type Core = {
 };
 
 const c = core as Core;
-export const { KITS, COUPONS, PRODUCT_NAME, FREE_SHIPPING_MIN } = c;
+export const { KITS, BUMP, MAX_INSTALLMENTS, COUPONS, PRODUCT_NAME, FREE_SHIPPING_MIN } = c;
 export const { findKit, addItem, setQty, normalizeCoupon, isValidCep, isValidCpf, isValidPhone, summarize, formatBRL } = c;
 
 // Same storage keys and shape as the cart drawer (public/cart/ps-cart.js).

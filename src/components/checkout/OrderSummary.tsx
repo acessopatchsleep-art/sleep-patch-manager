@@ -42,7 +42,7 @@ function SummaryBody({ summary: s, coupon, onQty, onCoupon }: Props) {
                   {qty === 1 ? <Trash2 className="size-4" /> : <Minus className="size-4" />}
                 </button>
                 <span className="w-7 text-center text-sm font-bold" aria-live="polite">{qty}</span>
-                <button type="button" className="p-1.5 text-muted-foreground hover:text-primary" onClick={() => onQty(kit.id, qty + 1)} aria-label={`Aumentar ${kit.title}`}>
+                <button type="button" disabled={kit.id === "bump-1"} className="p-1.5 text-muted-foreground hover:text-primary disabled:opacity-30" onClick={() => onQty(kit.id, qty + 1)} aria-label={`Aumentar ${kit.title}`}>
                   <Plus className="size-4" />
                 </button>
               </div>

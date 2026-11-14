@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Loader2, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Lock, ShoppingBag, Truck, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { MobileSummary, OrderSummary } from "@/components/checkout/OrderSummary";
 import { CheckoutFooter, CheckoutHeader, Field, PixIcon, StepCard, type StepState } from "@/components/checkout/parts";
 import { PixScreen } from "@/components/checkout/PixScreen";
 import { Button } from "@/components/ui/button";
-import { formatBRL, isValidCep, loadCart, readTracking, saveCart, setQty, summarize, type CartState } from "@/lib/cart";
+import { BUMP, MAX_INSTALLMENTS, formatBRL, isValidCep, loadCart, readTracking, saveCart, setQty, summarize, type CartState } from "@/lib/cart";
 import { MASKS, emptyForm, validateAddress, validateIdentity, type CheckoutForm, type FieldErrors } from "@/lib/checkout-form";
 
 export const Route = createFileRoute("/checkout")({
@@ -25,6 +25,8 @@ export const Route = createFileRoute("/checkout")({
 });
 
 const FORM_KEY = "ps-checkout-form-v1";
+// Vega's hosted checkout link, used for card payments (the Vega API only creates Pix charges).
+const CARD_CHECKOUT_URL = "https://checkout.patchsleep.shop/VCCL1O8SDBLG";
 type Step = 1 | 2 | 3;
 
 function CheckoutPage() {
@@ -35,6 +37,7 @@ function CheckoutPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
+  const [method, setMethod] = useState<"pix" | "card">("pix");
   const lastCep = useRef("");
 
   useEffect(() => {
@@ -85,7 +88,7 @@ function CheckoutPage() {
     );
   }
 
-  if (cart.items.length === 0) {
+  if (!cart.items.some((i) => i.id !== BUMP.id)) {
     return (
       <Shell>
         <div className="co-card mx-auto max-w-md p-8 text-center">
@@ -101,6 +104,10 @@ function CheckoutPage() {
   }
 
   const summary = summarize(cart.items, { coupon: cart.coupon, cep: cart.cep });
+
+  const hasBump = cart.items.some((i) => i.id === BUMP.id);
+  const toggleBump = () =>
+    setCart((c) => (c ? { ...c, items: hasBump ? c.items.filter((i) => i.id !== BUMP.id) : [...c.items, { id: BUMP.id, qty: 1 }] } : c));
 
   const update = (name: keyof CheckoutForm, raw: string) => {
     const value = MASKS[name] ? MASKS[name]!(raw) : raw;
@@ -305,32 +312,70 @@ function CheckoutPage() {
             </form>
           </StepCard>
 
-          <StepCard number={3} title="Pagamento" hint={stateOf(3) === "open" ? "Pague com Pix e tenha seu pedido aprovado na hora." : "Preencha os passos anteriores para escolher o pagamento."} state={stateOf(3)}>
+          <StepCard number={3} title="Pagamento" hint={stateOf(3) === "open" ? "Escolha Pix (aprovação imediata) ou cartão de crédito." : "Preencha os passos anteriores para escolher o pagamento."} state={stateOf(3)}>
             <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-xl border-2 border-success bg-success-soft px-4 py-3">
-                <span className="flex size-5 items-center justify-center rounded-full border-2 border-success" aria-hidden="true">
-                  <span className="size-2.5 rounded-full bg-success" />
-                </span>
-                <PixIcon className="size-5 text-success" />
-                <div className="flex-1">
-                  <p className="font-bold">Pix</p>
-                  <p className="text-xs text-muted-foreground">Aprovação imediata · QR Code e Copia e Cola</p>
-                </div>
-                <span className="font-extrabold">{formatBRL(summary.total)}</span>
+              <div role="radiogroup" aria-label="Forma de pagamento" className="space-y-3">
+                <MethodOption
+                  selected={method === "pix"}
+                  onSelect={() => setMethod("pix")}
+                  icon={<PixIcon className="size-5 text-success" />}
+                  title="Pix"
+                  subtitle="QR Code e Copia e Cola"
+                  price={formatBRL(summary.total)}
+                  badge={
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success-foreground">
+                      <Zap className="size-3" aria-hidden="true" /> Aprovação imediata
+                    </span>
+                  }
+                />
+                <MethodOption
+                  selected={method === "card"}
+                  onSelect={() => setMethod("card")}
+                  icon={<CreditCard className="size-5 text-primary" aria-hidden="true" />}
+                  title="Cartão de crédito"
+                  subtitle={`Em até ${MAX_INSTALLMENTS}x de ${formatBRL(summary.total / MAX_INSTALLMENTS)} sem juros`}
+                  price={formatBRL(summary.total)}
+                />
               </div>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• O código Pix aparece na próxima tela, pronto para pagar no app do seu banco.</li>
-                <li>• Seu pedido é confirmado assim que o pagamento é aprovado.</li>
-              </ul>
+
+              <label className={`flex cursor-pointer gap-3 rounded-xl border-2 border-dashed p-4 transition-colors ${hasBump ? "border-success bg-success-soft" : "border-primary/40 bg-primary-soft/50"}`}>
+                <input type="checkbox" checked={hasBump} onChange={toggleBump} className="mt-1 size-5 shrink-0 accent-[var(--color-success)]" />
+                <img src={BUMP.image} alt="" className="size-16 shrink-0 rounded-lg bg-surface object-contain" />
+                <span className="flex-1 text-sm">
+                  <span className="block text-xs font-extrabold uppercase tracking-wide text-primary">Oferta única · só nesta compra</span>
+                  <span className="block font-bold">Sim! Quero +1 pacote extra (48 adesivos)</span>
+                  <span className="block text-muted-foreground">
+                    De <s>{formatBRL(BUMP.oldPrice)}</s> por <strong className="text-success">{formatBRL(BUMP.price)}</strong>. Garanta mais um mês de sono tranquilo.
+                  </span>
+                </span>
+              </label>
+
+              {method === "pix" ? (
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>• O código Pix aparece na próxima tela, pronto para pagar no app do seu banco.</li>
+                  <li>• Seu pedido é aprovado na hora, assim que o pagamento é feito.</li>
+                </ul>
+              ) : (
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>• Você será levado ao ambiente seguro do Vega Checkout para digitar os dados do cartão.</li>
+                  <li>• Parcele em até {MAX_INSTALLMENTS}x sem juros.</li>
+                </ul>
+              )}
               {payError && (
                 <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
                   {payError}
                 </p>
               )}
-              <Button variant="pay" size="xl" onClick={pay} disabled={submitting}>
-                {submitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <PixIcon />}
-                {submitting ? "Gerando Pix…" : `Pagar ${formatBRL(summary.total)} com Pix`}
-              </Button>
+              {method === "pix" ? (
+                <Button variant="pay" size="xl" onClick={pay} disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <PixIcon />}
+                  {submitting ? "Gerando Pix…" : `Pagar ${formatBRL(summary.total)} com Pix`}
+                </Button>
+              ) : (
+                <Button variant="checkout" size="xl" className="w-full" onClick={() => (window.location.href = CARD_CHECKOUT_URL)}>
+                  <Lock aria-hidden="true" /> Pagar {formatBRL(summary.total)} com cartão
+                </Button>
+              )}
             </div>
           </StepCard>
         </div>
@@ -340,6 +385,33 @@ function CheckoutPage() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+function MethodOption(props: {
+  selected: boolean;
+  onSelect: () => void;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  price: string;
+  badge?: React.ReactNode;
+}) {
+  const tone = props.selected ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-primary/50";
+  return (
+    <button type="button" role="radio" aria-checked={props.selected} onClick={props.onSelect} className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-colors ${tone}`}>
+      <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${props.selected ? "border-primary" : "border-muted-foreground/40"}`} aria-hidden="true">
+        {props.selected && <span className="size-2.5 rounded-full bg-primary" />}
+      </span>
+      {props.icon}
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2 font-bold">
+          {props.title} {props.badge}
+        </span>
+        <span className="block text-xs text-muted-foreground">{props.subtitle}</span>
+      </span>
+      <span className="font-extrabold">{props.price}</span>
+    </button>
   );
 }
 

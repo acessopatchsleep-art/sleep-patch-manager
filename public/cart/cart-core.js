@@ -11,7 +11,11 @@ export const KITS = [
   { id: "kit-3", option: "6 Meses", title: "3 Pacotes", packs: 3, dose: "144 Adesivos", price: 127, oldPrice: 360, image: "/images/adesivo-patch-sleep-kit3.webp" },
 ];
 
+// Order bump offered on the checkout payment step (one per order).
+export const BUMP = { id: "bump-1", option: "Oferta", title: "+1 Pacote extra", packs: 1, dose: "48 Adesivos", price: 29.9, oldPrice: 59, image: "/images/adesivo-patch-sleep-principal.webp" };
+
 export function findKit(idOrOption) {
+  if (idOrOption === BUMP.id) return BUMP;
   return KITS.find((k) => k.id === idOrOption || k.option.toLowerCase() === String(idOrOption || "").toLowerCase()) || null;
 }
 
@@ -42,7 +46,8 @@ const round2 = (n) => Math.round(n * 100) / 100;
 export function summarize(items, { coupon = null, cep = null } = {}) {
   const lines = items
     .map((i) => ({ ...i, kit: findKit(i.id) }))
-    .filter((l) => l.kit && l.qty > 0);
+    .filter((l) => l.kit && l.qty > 0)
+    .map((l) => (l.kit.id === BUMP.id ? { ...l, qty: 1 } : l));
   const count = lines.reduce((s, l) => s + l.qty, 0);
   const subtotal = round2(lines.reduce((s, l) => s + l.kit.price * l.qty, 0));
   const oldSubtotal = round2(lines.reduce((s, l) => s + l.kit.oldPrice * l.qty, 0));

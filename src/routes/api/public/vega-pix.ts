@@ -14,9 +14,10 @@ const text = (max: number) => z.string().trim().min(1).max(max);
 
 const Body = z.object({
   items: z
-    .array(z.object({ id: z.enum(["kit-1", "kit-2", "kit-3"]), qty: z.number().int().min(1).max(20) }))
+    .array(z.object({ id: z.enum(["kit-1", "kit-2", "kit-3", "bump-1"]), qty: z.number().int().min(1).max(20) }))
     .min(1)
-    .max(10),
+    .max(10)
+    .refine((items) => items.some((i) => i.id !== "bump-1"), "Escolha um kit"),
   coupon: z.string().max(40).nullish(),
   customer: z.object({
     name: z.string().trim().min(3).max(120),
